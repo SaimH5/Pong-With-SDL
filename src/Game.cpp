@@ -9,6 +9,8 @@ Game::Game(){
     mWindow = nullptr;
     mRenderer = nullptr;
     mIsRunning = true;
+    mPlayerDir = PLAYER_DIRECTION_NEUTRAL;
+    mTicksCount = 0;
 }
 
 bool Game::Initialize(){
@@ -30,6 +32,12 @@ bool Game::Initialize(){
         return false;
     }
 
+    mPlayerPaddlePos.x = 10.0f;
+    mPlayerPaddlePos.y = SCREEN_HEIGHT / 2.0f;
+    mBallPos.x = SCREEN_WIDTH / 2.0f;
+    mBallPos.y = SCREEN_HEIGHT / 2.0f;
+    mBallVelocity.x = 110.0f;
+    mBallVelocity.y = -100.0f;
     return true;
 }
 
@@ -43,7 +51,7 @@ void Game::RunLoop(){
     
     while(mIsRunning){
         ProcessInput();
-        // UpdateGame();
+        UpdateGame();
         GenerateOutput();
     }
 }
@@ -57,7 +65,65 @@ void Game::ProcessInput(){
                 break;
         }
     }
+
+    const Uint8* state = SDL_GetKeyboardState(NULL);
+    if(state[SDL_SCANCODE_ESCAPE]){
+        mIsRunning = false;
+    }
+    if(state[SDL_SCANCODE_UP] && state[SDL_SCANCODE_DOWN]){
+        mPlayerDir = PLAYER_DIRECTION_NEUTRAL;
+    }
+    else if(state[SDL_SCANCODE_UP]){
+        mPlayerDir = PLAYER_DIRECTION_UP;
+    }
+    else if(state[SDL_SCANCODE_DOWN]){
+        mPlayerDir = PLAYER_DIRECTION_DOWN;
+    } 
+    else{
+        mPlayerDir = PLAYER_DIRECTION_NEUTRAL;
+    }
 } 
+
+void Game::UpdateGame(){
+    while(!SDL_TICKS_PASSED(SDL_GetTicks(), mTicksCount + 16)){;}
+
+    float deltaTime = (SDL_GetTicks() - mTicksCount / 1000.0f);
+
+    mTicksCount = SDL_GetTicks();
+    if(deltaTime > 0.05f){
+        deltaTime = 0.05f;
+    }
+
+    // Player Paddle Position Update
+    mPlayerPaddlePos.y += mPlayerDir * 300.0f * deltaTime;
+
+    // Boundary Collision Check and Clamping
+    if(mPlayerPaddlePos.y - paddleH / 2.0f < thickness){
+        mPlayerPaddlePos.y = paddleH / 2.0f + thickness;
+    }
+
+    if(mPlayerPaddlePos.y + paddleH/ 2.0f > SCREEN_HEIGHT-thickness){
+        mPlayerPaddlePos.y = SCREEN_HEIGHT - paddleH / 2.0f - thickness;
+    }
+
+    // Ball Position Update
+    mBallPos.x += mBallVelocity.x * deltaTime;
+    mBallPos.y += mBallVelocity.y * deltaTime;
+
+    // Collision Detection with Walls
+    if(mBallPos.y - thickness / 2.0f < thickness && mBallVelocity.y < 0.0f){
+        mBallVelocity.y *= -1;
+    }
+    if(mBallPos.y + thickness / 2.0f > SCREEN_HEIGHT - thickness && mBallVelocity.y > 0.0f){
+        mBallVelocity.y *= -1;
+    }
+    if(mBallPos.x + thickness / 2.0f > SCREEN_WIDTH - thickness && mBallVelocity.x > 0.0f){
+        mBallVelocity.x *= -1;
+    }
+
+    // Collision Detection with Paddle
+    
+}
 
 void Game:: GenerateOutput(){
     SDL_SetRenderDrawColor(mRenderer, 0, 0, 255, 0);
@@ -73,8 +139,25 @@ void Game:: GenerateOutput(){
         SCREEN_WIDTH - thickness, 0, thickness, SCREEN_HEIGHT
     };
 
+    SDL_Rect Paddle{
+        static_cast<int>(mPlayerPaddlePos.x - thickness/2.0f), 
+        static_cast<int>(mPlayerPaddlePos.y - paddleH / 2.0f),
+        thickness,
+        paddleH
+    };
 
-    SDL_SetRenderDrawColor(mRenderer, 255, 255, 255, 255);
+    SDL_Rect Ball{
+        static_cast<int>(mBallPos.x - thickness/2.0f),
+        static_cast<int>(mBallPos.y - thickness/2.0f),
+        thickness,
+        thickness
+    };
+
+    SDL_SetRenderDrawColor(mRenderer, 255, 0, 0, 255);
+    SDL_RenderFillRect(mRenderer, &Paddle);
+    SDL_RenderFillRect(mRenderer, &Ball);
+
+    SDL_SetRenderDrawColor(mRenderer, 50, 50, 50, 255);
     SDL_RenderFillRect(mRenderer, &topWall);
     SDL_RenderFillRect(mRenderer, &bottomWall);
     SDL_RenderFillRect(mRenderer, &rightWall);
