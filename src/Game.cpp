@@ -122,6 +122,15 @@ void Game::UpdateGame(){
     }
 
     // Collision Detection with Paddle
+    float diff = abs(mPlayerPaddlePos.y - mBallPos.y);
+    if( 
+        diff <= paddleH / 2.0f && 
+        mBallVelocity.x < 0.0f &&
+        mBallPos.x < thickness + 15.0f && mBallPos.x > thickness + 10.0f)
+    {
+        mBallVelocity.x *= -1;
+    }
+
     
 }
 
